@@ -1,0 +1,38 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+dist-ssr/
+
+# Test output
+coverage/
+
+# IDE / editor
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+npm-debug.log*
+
+# Playwright visual QA artifacts
+tests/visual/test-results/
+tests/visual/playwright-report/
+tests/visual/screenshots/
+tests/visual/videos/
+tests/visual/baselines/*/*.png
+tests/visual/.tmp/

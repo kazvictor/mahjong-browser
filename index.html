@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="A browser-based Mahjong game — Canvas 2D tile rendering with vanilla TypeScript." />
+    <title>Mahjong — Browser Game</title>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body {
+        width: 100%;
+        /* 100dvh tracks the *visible* mobile viewport as the URL bar collapses,
+           so bottom-anchored UI never hangs behind browser chrome. 100vh is the
+           fallback for browsers without dynamic viewport units. */
+        height: 100vh;
+        height: 100dvh;
+        overflow: hidden;
+        background: #123524;
+      }
+      #app { width: 100vw; height: 100vh; height: 100dvh; }
+      canvas { display: block; }
+    </style>
+    <link rel="stylesheet" href="/src/styles/main.css" />
+  </head>
+  <body>
+    <div id="app">
+      <canvas id="game-canvas"></canvas>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

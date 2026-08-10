@@ -1,0 +1,22 @@
+/* Main stylesheet for the Mahjong game.
+   The CSS reset + fullscreen canvas sizing live inline in index.html to avoid a
+   flash of unstyled content; this file carries the game-specific visual rules. */
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  background: #123524;
+  color: #e8e8d8;
+}
+
+#game-canvas {
+  display: block;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+}
