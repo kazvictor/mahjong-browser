@@ -7,3 +7,18 @@
  */
 
 export { TableRenderer } from './table-renderer';
+export { DealingAnimation, TILE_W, TILE_H } from './dealing-animation';
+export {
+  AssetLoader,
+  TILE_WIDTH,
+  TILE_HEIGHT,
+  SPRITE_WIDTH,
+  SPRITE_HEIGHT,
+  type AssetLoaderOptions,
+} from './asset-loader';
+export {
+  TileRenderer,
+  tileZOrder,
+  type TileDrawState,
+  type TileRendererOptions,
+} from './tile-renderer';
