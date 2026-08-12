@@ -33,4 +33,9 @@ export class TableRenderer {
     const { clientWidth, clientHeight } = this.canvas;
     this.ctx.clearRect(0, 0, clientWidth, clientHeight);
   }
+
+  /** Expose the shared 2D context so scene code can paint on the same surface. */
+  getContext(): CanvasRenderingContext2D {
+    return this.ctx;
+  }
 }

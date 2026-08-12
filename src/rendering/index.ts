@@ -22,3 +22,7 @@ export {
   type TileDrawState,
   type TileRendererOptions,
 } from './tile-renderer';
+export {
+  GameScene,
+  type GameSceneOptions,
+} from './game-scene';

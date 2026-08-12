@@ -228,6 +228,31 @@ export class MahjongGame {
   }
 
   /**
+   * The dealer opens by discarding one of their 14 tiles: DRAW -> DISCARD.
+   *
+   * After `dealComplete()` the dealer already holds a 14th tile but has not
+   * drawn one, so the normal `drawTile()` path (DRAW -> DISCARD with a fresh
+   * wall draw) is wrong for the opening move. This mirrors {@link discardTile}
+   * but is legal from the DRAW phase, emitting TILE_DISCARDED + TURN_ENDED so
+   * the turn advances to the next player.
+   */
+  discardOpening(tileId: string): void {
+    this.assertPhase(GameState.DRAW, 'discardOpening');
+    const round = this.requireRound();
+    const player = round.players[round.currentPlayer]!;
+    const index = player.tiles.findIndex((t) => t.id === tileId);
+    if (index === -1) {
+      throw new Error(`Tile ${tileId} is not in player ${player.id}'s hand.`);
+    }
+    const [tile] = player.tiles.splice(index, 1);
+    round.discardPile.push(tile!);
+
+    this.phase = transition(this.phase, 'OPENING_DISCARD');
+    this.bus.emit({ type: 'TILE_DISCARDED', playerId: player.id, tile: tile! });
+    this.bus.emit({ type: 'TURN_ENDED', playerId: player.id });
+  }
+
+  /**
    * The current player draws a tile from the wall: DRAW -> DISCARD.
    * Emits TILE_DRAWN.
    */

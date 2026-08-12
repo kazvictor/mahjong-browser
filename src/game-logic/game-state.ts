@@ -38,7 +38,8 @@ export type PhaseAction =
   | 'MELD_COMPLETE'
   | 'PASS'
   | 'CLAIM_DISCARD'
-  | 'ROUND_END';
+  | 'ROUND_END'
+  | 'OPENING_DISCARD';
 
 /** A single legal transition edge: from a phase, an action leads to a phase. */
 export interface PhaseTransition {
@@ -58,6 +59,8 @@ export const PHASE_TRANSITIONS: readonly PhaseTransition[] = [
   { from: GameState.DEALING, action: 'DEAL_COMPLETE', to: GameState.DRAW },
   // DRAW -> DISCARD: player draws 14th tile, then discards.
   { from: GameState.DRAW, action: 'DRAW_TILE', to: GameState.DISCARD },
+  // DRAW -> DISCARD: the dealer opens by discarding their 14th tile (no draw).
+  { from: GameState.DRAW, action: 'OPENING_DISCARD', to: GameState.DISCARD },
   // DISCARD -> DRAW: next player turn (normal flow).
   { from: GameState.DISCARD, action: 'DISCARD_TILE', to: GameState.DRAW },
   // DISCARD -> DECLARE: another player calls pung/kong/pong on the discard.

@@ -25,8 +25,8 @@ export const TILE_HEIGHT = 60;
 export const SPRITE_WIDTH = 80;
 export const SPRITE_HEIGHT = 120;
 
-/** Vite glob of every PNG under assets/tiles. */
-const spriteModules = import.meta.glob('../assets/tiles/*.png', {
+/** Vite glob of every PNG under the project-root assets/tiles directory. */
+const spriteModules = import.meta.glob('../../assets/tiles/*.png', {
   eager: true,
   import: 'default',
 }) as Record<string, string>;

@@ -5,7 +5,7 @@
  * Game-state wiring (draw/discard) lands in a follow-up task; this module only
  * owns startup and the frame loop.
  */
-import { TableRenderer } from './rendering/table-renderer';
+import { GameScene } from './rendering/game-scene';
 
 function getGameCanvas(): HTMLCanvasElement {
   const canvas = document.getElementById('game-canvas');
@@ -15,18 +15,16 @@ function getGameCanvas(): HTMLCanvasElement {
   return canvas;
 }
 
-function start(): void {
+async function start(): Promise<void> {
   const canvas = getGameCanvas();
-  const renderer = new TableRenderer(canvas);
+  const scene = new GameScene(canvas);
 
-  renderer.resize();
-  window.addEventListener('resize', () => renderer.resize());
-
-  const frame = (): void => {
-    renderer.clear();
-    requestAnimationFrame(frame);
-  };
-  requestAnimationFrame(frame);
+  // Keep the scene alive for the lifetime of the page; the frame loop is owned
+  // by the scene. A failed asset load must not silently render a blank screen,
+  // so surface it loudly in the console.
+  await scene.start().catch((err: unknown) => {
+    console.error('Failed to start Mahjong game:', err);
+  });
 }
 
-start();
+void start();
