@@ -32,6 +32,7 @@ import type { MeldType, Tile } from '../game-logic/types';
 import { MeldDisplay } from '../ui/components/meld-display';
 import { MeldDeclarationPrompt } from '../ui/components/meld-declaration';
 import type { MeldDeclareOption } from '../ui/components/meld-declaration';
+import { SaveManager } from '../persistence';
 
 /** Options accepted by the {@link GameScene} constructor. */
 export interface GameSceneOptions {
@@ -39,6 +40,12 @@ export interface GameSceneOptions {
   readonly seed?: number;
   /** When true, AI opponents are connected and play automatically. */
   readonly enableAI?: boolean;
+  /**
+   * Optional persistence coordinator. When provided, the scene arms auto-save
+   * (persisting after each action) and, on boot, resumes the previous session's
+   * auto-save instead of dealing a fresh game.
+   */
+  readonly saveManager?: SaveManager;
 }
 
 /**
@@ -146,6 +153,7 @@ export class GameScene {
   private readonly ais: AIPlayer[] = [];
   private readonly seed: number;
   private readonly enableAI: boolean;
+  private readonly saveManager: SaveManager | null;
   private readonly meldDisplay: MeldDisplay;
   private readonly meldPrompt: MeldDeclarationPrompt;
 
@@ -160,6 +168,7 @@ export class GameScene {
     this.canvas = canvas;
     this.seed = options.seed ?? Math.floor(Math.random() * 0xffffffff);
     this.enableAI = options.enableAI ?? true;
+    this.saveManager = options.saveManager ?? null;
     this.game = new MahjongGame();
     this.renderer = new TableRenderer(canvas);
     this.loader = new AssetLoader();
@@ -198,10 +207,36 @@ export class GameScene {
     await this.loader.load();
     this.renderer.resize();
 
-    // Deal a starting hand: build the wall + deal 13 to everyone, then give
-    // the dealer (human, seat 0) their 14th tile so the opening move is ready.
-    this.game.startGame(this.seed);
-    this.game.dealComplete();
+    // Deal a starting hand OR resume the previous session's auto-save. When a
+    // save manager is wired, prefer resuming: the player expects their in-progress
+    // round to survive a page reload. Only fall back to a fresh deal when there
+    // is no valid auto-save (first visit, or the last round was completed).
+    const resumed = this.saveManager ? await this.saveManager.loadAutoSave() : null;
+    if (resumed) {
+      this.game.restore(resumed);
+    } else {
+      // Fresh deal: build the wall + deal 13 to everyone, then give the dealer
+      // (human, seat 0) their 14th tile so the opening move is ready.
+      this.game.startGame(this.seed);
+      this.game.dealComplete();
+    }
+
+    if (this.saveManager) {
+      this.saveManager.connect(() => this.game.getState());
+      this.saveManager.setAutoSave(true);
+      // Auto-save after every game action (draw, discard, meld, claim, win).
+      const actionEvents = [
+        'TILE_DRAWN',
+        'TILE_DISCARDED',
+        'TILE_CLAIMED',
+        'MELD_CALLED',
+        'WIN_DECLARED',
+        'ROUND_ENDED',
+      ] as const;
+      for (const type of actionEvents) {
+        this.disposers.push(this.game.on(type, () => this.saveManager?.onAction()));
+      }
+    }
 
     this.input.attach();
 
@@ -239,6 +274,7 @@ export class GameScene {
     this.meldPrompt.dispose();
     for (const d of this.disposers) d();
     this.disposers = [];
+    this.saveManager?.disconnect();
   }
 
   // ---- Frame loop ----------------------------------------------------------
@@ -359,18 +395,6 @@ export class GameScene {
     }
   }
 
-  /** Advance to the next player's turn after a discard. */
-  private advanceTurn(): void {
-    const state = this.game.getState();
-    if (state.phase === GameState.DISCARD) {
-      try {
-        this.game.nextTurn(); // DISCARD -> DRAW for the next player
-      } catch {
-        // Ignore: e.g. a claim path we don't model at MVP.
-      }
-    }
-  }
-
   /**
    * After a discard, offer meld claims to the other players before advancing
    * the turn. The human (seat 0) gets a prompt when they can claim; AI
@@ -431,6 +455,18 @@ export class GameScene {
     };
     this.meldPrompt.onTimeout = () => this.advanceTurn();
     this.meldPrompt.show(options);
+  }
+
+  /** Advance to the next player's turn after a discard. */
+  private advanceTurn(): void {
+    const state = this.game.getState();
+    if (state.phase === GameState.DISCARD) {
+      try {
+        this.game.nextTurn(); // DISCARD -> DRAW for the next player
+      } catch {
+        // Ignore: e.g. a claim path we don't model at MVP.
+      }
+    }
   }
 
   // ---- AI wiring -----------------------------------------------------------

@@ -32,6 +32,40 @@ export {
 export { HongKongRules, isWinningHand, calculateFaan } from './rules/hong-kong-rules';
 export type { FaanPattern } from './rules/hong-kong-rules';
 export {
+  detectWin,
+  isWinningHand as detectWinBoolean,
+  type WinResult,
+  type WinMeld,
+  type WinType,
+} from './win-detection';
+export {
+  scoreWin,
+  scoreHand,
+  MELD_BASE_POINTS,
+  DRAGON_BONUS,
+  WIND_BONUS,
+  SEVEN_PAIRS_SCORE,
+  THIRTEEN_ORPHANS_SCORE,
+  type ScoreResult as MvpScoreResult,
+  type ScoreLine,
+} from './scoring';
+export {
+  analyzeWinningHand,
+  calculateFu,
+  evaluateYaku,
+  resolveLimit,
+  calculateScore,
+} from './rules/riichi-scoring';
+export type {
+  AnalyzedHand,
+  AnalyzedMeld,
+  ScoreLimit,
+  ScoreOptions,
+  ScoreResult,
+  WaitType,
+  YakuResult,
+} from './rules/riichi-scoring';
+export {
   Tile as TileClass,
   spriteToken,
   spriteFileName,

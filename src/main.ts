@@ -1,11 +1,12 @@
 /**
  * Mahjong game entry point.
  *
- * Bootstraps the canvas renderer and starts the requestAnimationFrame loop.
- * Game-state wiring (draw/discard) lands in a follow-up task; this module only
- * owns startup and the frame loop.
+ * Bootstraps the canvas renderer, the persistence coordinator, and starts the
+ * requestAnimationFrame loop. Game-state wiring (draw/discard) lands in a
+ * follow-up task; this module only owns startup and the frame loop.
  */
 import { GameScene } from './rendering/game-scene';
+import { SaveManager } from './persistence';
 
 function getGameCanvas(): HTMLCanvasElement {
   const canvas = document.getElementById('game-canvas');
@@ -17,7 +18,10 @@ function getGameCanvas(): HTMLCanvasElement {
 
 async function start(): Promise<void> {
   const canvas = getGameCanvas();
-  const scene = new GameScene(canvas);
+  // The persistence coordinator prefers IndexedDB and falls back to localStorage;
+  // the scene uses it to resume the previous session and auto-save each action.
+  const saveManager = new SaveManager();
+  const scene = new GameScene(canvas, { saveManager });
 
   // Expose the scene for automated visual QA (Playwright). The test harness
   // drives the game into a meld state and asserts on the rendered table.

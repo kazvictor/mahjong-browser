@@ -94,7 +94,8 @@ interface RoundState {
   dealer: number;
   round: number;
   seed: number;
-  /** Resolved when a win is declared; cleared on the next round. */
+  /** Resolved when a win is declared; cleared on the next round. Optional so
+   * restored snapshots that predate the win-result fields keep compiling. */
   winResult?: WinResult | null;
   scoreResult?: ScoreResult | null;
   /**
@@ -232,6 +233,62 @@ export class MahjongGame {
 
     this.phase = transition(this.phase, 'START_GAME');
     this.bus.emit({ type: 'GAME_STARTED', seed: rngSeed, dealer: 0 });
+  }
+
+  /**
+   * Restore a previously persisted {@link GameSnapshot}, reconstructing the
+   * exact round state so a mid-game reload continues seamlessly.
+   *
+   * Only legal on a fresh engine (phase IDLE) — restoring over a live round
+   * would silently discard in-progress state. Emits GAME_STARTED so listeners
+   * (AI wiring, renderer, auto-save) re-arm against the restored round.
+   *
+   * @throws {Error} when called mid-game, or when the snapshot is inconsistent
+   *   (missing/unknown players, invalid seat indices, out-of-range turn owner).
+   */
+  restore(snapshot: GameSnapshot): void {
+    this.assertPhase(GameState.IDLE, 'restore');
+
+    const players: PlayerState[] = snapshot.players.map((p) => ({
+      id: p.id,
+      seat: p.seat,
+      isAI: p.isAI,
+      tiles: [...p.hand.tiles],
+      melds: p.hand.melds.map((m) => ({ ...m, tiles: [...m.tiles] })),
+      bonusTiles: [...p.hand.bonusTiles],
+      score: p.score,
+    }));
+
+    // Validate the seat/ownership invariants before wiring anything in.
+    const seats = new Set(players.map((p) => p.seat));
+    if (players.length !== PLAYER_COUNT || seats.size !== PLAYER_COUNT) {
+      throw new Error(
+        `Cannot restore: expected ${PLAYER_COUNT} unique seats, got ${players.length}.`,
+      );
+    }
+    if (!snapshot.players.some((p) => p.id === snapshot.currentPlayer)) {
+      throw new Error(`Cannot restore: currentPlayer ${snapshot.currentPlayer} is not seated.`);
+    }
+    if (!snapshot.players.some((p) => p.id === snapshot.dealer)) {
+      throw new Error(`Cannot restore: dealer ${snapshot.dealer} is not seated.`);
+    }
+
+    this.phase = snapshot.phase;
+    this.round = {
+      wall: [...snapshot.wall],
+      deadWall: [...snapshot.deadWall],
+      discardPile: [...snapshot.discardPile],
+      players,
+      currentPlayer: snapshot.currentPlayer,
+      dealer: snapshot.dealer,
+      round: snapshot.round,
+      seed: snapshot.seed,
+      winResult: snapshot.winResult ?? null,
+      scoreResult: snapshot.scoreResult ?? null,
+      pendingDiscard: snapshot.pendingDiscard ?? null,
+    };
+
+    this.bus.emit({ type: 'GAME_STARTED', seed: snapshot.seed, dealer: snapshot.dealer });
   }
 
   /**
@@ -576,6 +633,18 @@ export class MahjongGame {
     const scores = round.players.map((p) => p.score);
     this.phase = transition(this.phase, 'ROUND_END');
     this.bus.emit({ type: 'ROUND_ENDED', winner: null, scores });
+  }
+
+  /**
+   * Reset the engine to a pristine, un-started state (IDLE, no round). This is
+   * the companion to {@link restore}: a save/load flow must reset before
+   * restoring a snapshot, because {@link restore} only runs on a fresh engine.
+   * Emits nothing; listeners are expected to re-arm after restore's GAME_STARTED.
+   */
+  reset(): void {
+    this.phase = GameState.IDLE;
+    this.round = null;
+    this.bus.reset();
   }
 
   private assertPhase(expected: GameState, method: string): void {

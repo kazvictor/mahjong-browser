@@ -279,17 +279,6 @@ describe('win detection', () => {
   });
 
   it('recognizes a hand with a pung and a pair', () => {
-    const hand: Hand = {
-      tiles: [
-        tile('dots', 1, 'a'), tile('dots', 1, 'b'), tile('dots', 1, 'c'),
-        tile('dots', 2, 'd'), tile('dots', 3, 'e'), tile('dots', 4, 'f'),
-        tile('dots', 5, 'g'), tile('dots', 6, 'h'), tile('dots', 7, 'i'),
-        tile('dots', 8, 'j'), tile('dots', 9, 'k'), tile('dots', 9, 'l'),
-        tile('dots', 9, 'm'), tile('dots', 9, 'n'),
-      ],
-      melds: [],
-      bonusTiles: [],
-    };
     // 1-1-1 pung, 2-3-4, 5-6-7, 8-9-9-9-9 (kong) + pair... this is 14 tiles:
     // 1,1,1 | 2,3,4 | 5,6,7 | 9,9,9,9(kong) | 8,9 pair? No — 8 is alone.
     // Use a cleaner hand: three chows + a pung + a pair.

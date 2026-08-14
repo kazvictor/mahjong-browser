@@ -130,4 +130,9 @@ export class EventBus {
   getLastEvent(): GameEvent | null {
     return this.lastEvent;
   }
+
+  /** Clear the retained last-event (used when resetting to a fresh state). */
+  reset(): void {
+    this.lastEvent = null;
+  }
 }
