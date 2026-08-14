@@ -8,6 +8,8 @@
  * "what is now".
  */
 import type { Hand, Meld, Tile } from './types';
+import type { WinResult } from './win-detection';
+import type { ScoreResult } from './scoring';
 
 /** A tile drawn from the wall or a kong-replacement tile. */
 export interface TileDrawn {
@@ -39,13 +41,19 @@ export interface MeldCalled {
   readonly meld: Meld;
 }
 
-/** A win declared by a player, with the resolved faan and score. */
+/** A win declared by a player, with the resolved pattern and score. */
 export interface WinDeclared {
   readonly type: 'WIN_DECLARED';
   readonly playerId: number;
   readonly hand: Hand;
-  readonly faan: number;
-  readonly score: number;
+  /** The resolved winning pattern (standard / seven-pairs / thirteen-orphans). */
+  readonly win: WinResult;
+  /** The score breakdown for the winning hand. */
+  readonly score: ScoreResult;
+  /** True when the win was declared on self-draw (tsumo). */
+  readonly isSelfDraw: boolean;
+  /** Convenience: the winner's total score for this hand. */
+  readonly scoreTotal: number;
 }
 
 /** The game started; a new round is being dealt. */

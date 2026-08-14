@@ -24,7 +24,8 @@ import { TableLayout, sortTilesForDraw, type LayoutFrame } from './table-layout'
 import { InputHandler } from '../input/input-handler';
 import type { TileRect } from '../input/tile-picker';
 import { AIPlayer } from '../game-logic/ai/ai-player';
-import { RandomDiscardStrategy } from '../game-logic/ai/random-discard-strategy';
+import { EfficiencyDiscardStrategy } from '../game-logic/ai/tile-efficiency';
+import type { EfficiencyContext } from '../game-logic/ai/tile-efficiency';
 import { MahjongGame, PLAYER_COUNT } from '../game-logic/mahjong-game';
 import { GameState } from '../game-logic/game-state';
 import type { Tile } from '../game-logic/types';
@@ -43,6 +44,8 @@ export interface GameSceneOptions {
  */
 class GameTurnController {
   private readonly game: MahjongGame;
+  /** The most recent tile drawn per player (fed to AI efficiency context). */
+  private readonly lastDrawnTiles = new Map<number, Tile>();
 
   constructor(game: MahjongGame) {
     this.game = game;
@@ -63,7 +66,11 @@ class GameTurnController {
     const after = this.game.getState().players[playerId]?.hand.tiles.length ?? 0;
     const drawn = this.game.getState().players[playerId]?.hand.tiles[after - 1];
     // drawTile() should add exactly one tile; otherwise treat as failure.
-    return after === before + 1 && drawn ? drawn : null;
+    if (after === before + 1 && drawn) {
+      this.lastDrawnTiles.set(playerId, drawn);
+      return drawn;
+    }
+    return null;
   }
 
   /**
@@ -93,6 +100,30 @@ class GameTurnController {
 
   handSnapshot(playerId: number): readonly Tile[] {
     return this.game.getState().players[playerId]?.hand.tiles ?? [];
+  }
+
+  /**
+   * Build the rich {@link EfficiencyContext} for an AI's discard decision.
+   * We track the round stage from the number of tiles drawn (the wall starts
+   * at 144 and every draw/claim shrinks it), the tiles already visible in the
+   * discard pile, and — since the MVP engine does not yet model riichi
+   * declarations — opponentRiichi is always false. The context is a pure
+   * snapshot, so this is safe to call repeatedly.
+   */
+  aiContextSnapshot(playerId: number): EfficiencyContext {
+    const state = this.game.getState();
+    const tilesDrawn = 144 - state.wall.length;
+    return {
+      seenTiles: state.discardPile,
+      opponentRiichi: false,
+      tilesDrawn,
+      drawnTile: this.lastDrawnFor(playerId),
+    };
+  }
+
+  /** The tile most recently drawn by `playerId`, if any. */
+  private lastDrawnFor(playerId: number): Tile | undefined {
+    return this.lastDrawnTiles.get(playerId);
   }
 }
 
@@ -325,7 +356,7 @@ export class GameScene {
 
   private connectAIs(): void {
     for (let id = 1; id < PLAYER_COUNT; id++) {
-      const ai = new AIPlayer(id, id, new RandomDiscardStrategy(), {
+      const ai = new AIPlayer(id, id, new EfficiencyDiscardStrategy(), {
         // Slightly snappier thinking for a snappy browser demo.
         thinkTimeMs: () => 600 + Math.random() * 900,
       });

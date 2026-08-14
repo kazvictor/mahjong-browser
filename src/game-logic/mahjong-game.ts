@@ -9,7 +9,8 @@
  */
 import { EventBus, type GameEvent } from './game-events';
 import { GameState, transition } from './game-state';
-import { HongKongRules } from './rules/hong-kong-rules';
+import { detectWin, type WinResult } from './win-detection';
+import { scoreWin, type ScoreResult } from './scoring';
 import type { Hand, Meld, MeldType, Player, Suit, Tile } from './types';
 
 /** Number of players in a Mahjong game. */
@@ -92,6 +93,9 @@ interface RoundState {
   dealer: number;
   round: number;
   seed: number;
+  /** Resolved when a win is declared; cleared on the next round. */
+  winResult?: WinResult | null;
+  scoreResult?: ScoreResult | null;
 }
 
 /** A read-only snapshot of the game, handed to the renderer each frame. */
@@ -106,12 +110,15 @@ export interface GameSnapshot {
   readonly round: number;
   readonly seed: number;
   readonly lastEvent: GameEvent | null;
+  /** The resolved winning hand, set once a win is declared. */
+  readonly winResult?: WinResult | null;
+  /** The resolved score for the winning hand, set once a win is declared. */
+  readonly scoreResult?: ScoreResult | null;
 }
 
 /** The public command surface for the game. */
 export class MahjongGame {
   private readonly bus = new EventBus();
-  private readonly rules = new HongKongRules();
   private phase: GameState = GameState.IDLE;
   private round: RoundState | null = null;
 
@@ -148,6 +155,8 @@ export class MahjongGame {
         round: 0,
         seed: 0,
         lastEvent: this.bus.getLastEvent(),
+        winResult: null,
+        scoreResult: null,
       };
     }
     return {
@@ -167,6 +176,8 @@ export class MahjongGame {
       round: round.round,
       seed: round.seed,
       lastEvent: this.bus.getLastEvent(),
+      winResult: round.winResult,
+      scoreResult: round.scoreResult,
     };
   }
 
@@ -204,6 +215,8 @@ export class MahjongGame {
       dealer: 0,
       round: 1,
       seed: rngSeed,
+      winResult: null,
+      scoreResult: null,
     };
 
     this.phase = transition(this.phase, 'START_GAME');
@@ -343,7 +356,8 @@ export class MahjongGame {
 
   /**
    * A player declares a win: DECLARE -> WIN or DISCARD -> WIN.
-   * Validates the hand, calculates faan, and emits WIN_DECLARED.
+   * Validates the hand, resolves the winning pattern and score, and emits
+   * WIN_DECLARED carrying the {@link WinResult} and {@link ScoreResult}.
    */
   declareWin(playerId: number, isSelfDraw: boolean): void {
     if (this.phase !== GameState.DECLARE && this.phase !== GameState.DISCARD) {
@@ -354,15 +368,29 @@ export class MahjongGame {
     if (!player) throw new Error(`Unknown player ${playerId}.`);
 
     const hand: Hand = { tiles: player.tiles, melds: player.melds, bonusTiles: player.bonusTiles };
-    if (!this.rules.isWinningHand(hand)) {
+    const win = detectWin(hand);
+    if (!win) {
       throw new Error(`Player ${playerId} does not have a winning hand.`);
     }
 
-    const { total } = this.rules.calculateFaan(hand, { isSelfDraw });
-    const score = total > 0 ? total : 1; // a valid win always scores at least 1 faan
+    const score = scoreWin(win);
+    const scoreTotal = score.total;
+
+    // Persist the resolved win on the round so a snapshot (and the renderer)
+    // can read it back after the WIN transition.
+    round.winResult = win;
+    round.scoreResult = score;
 
     this.phase = transition(this.phase, 'DECLARE_WIN');
-    this.bus.emit({ type: 'WIN_DECLARED', playerId, hand, faan: total, score });
+    this.bus.emit({
+      type: 'WIN_DECLARED',
+      playerId,
+      hand,
+      win,
+      score,
+      isSelfDraw,
+      scoreTotal,
+    });
   }
 
   /**
