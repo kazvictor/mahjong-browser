@@ -13,6 +13,8 @@
  */
 import type { Hand, Player, Tile } from '../types';
 import type { DiscardStrategy } from './random-discard-strategy';
+import type { EfficiencyContext } from './tile-efficiency';
+import { isContextAwareStrategy } from './tile-efficiency';
 import { AI_THINK_TIME_MIN, AI_THINK_TIME_MAX } from '../../config/ai-config';
 
 /**
@@ -53,6 +55,15 @@ export interface TurnController {
 
   /** A read-only snapshot of `playerId`'s concealed hand at this moment. */
   handSnapshot(playerId: number): readonly Tile[];
+
+  /**
+   * Optional richer context for efficiency-aware strategies. When implemented,
+   * the AI feeds it to {@link EfficiencyDiscardStrategy.chooseWithContext} so
+   * discard decisions can use seen tiles, riichi threat, stage, etc. A
+   * controller that does not track this returns `null` (the AI falls back to
+   * the hand-only path).
+   */
+  aiContextSnapshot?(playerId: number): EfficiencyContext | null;
 }
 
 /** Options used to construct an AIPlayer (mostly for tests/tuning). */
@@ -160,9 +171,17 @@ export class AIPlayer implements Player {
       // Choose a discard, protecting the just-drawn tile if it completes a
       // meld. The concrete hand is owned by the engine; the strategy decides
       // from the controller's perspective, so we pass the drawn tile as the
-      // tile to favour keeping.
+      // tile to favour keeping. When the controller and strategy both support
+      // the richer context path, feed it the seen tiles / riichi threat so the
+      // efficiency AI can play defensively and value tiles by stage.
       const hand = controller.handSnapshot(this.id);
-      const tileToDiscard = this.strategy.chooseTile(hand, this.lastDrawnTileId);
+      const context = controller.aiContextSnapshot?.(this.id) ?? null;
+      let tileToDiscard: Tile | null;
+      if (context && isContextAwareStrategy(this.strategy)) {
+        tileToDiscard = this.strategy.chooseWithContext(hand, context, this.lastDrawnTileId);
+      } else {
+        tileToDiscard = this.strategy.chooseTile(hand, this.lastDrawnTileId);
+      }
 
       if (tileToDiscard !== null) {
         if (!controller.canAct(this.id)) {

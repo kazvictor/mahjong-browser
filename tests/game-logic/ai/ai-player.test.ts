@@ -5,6 +5,8 @@ import { describe, expect, it, vi } from 'vitest';
 import type { Tile } from '../../../src/game-logic/types';
 import { AIPlayer, type TurnController } from '../../../src/game-logic/ai/ai-player';
 import { RandomDiscardStrategy } from '../../../src/game-logic/ai/random-discard-strategy';
+import { EfficiencyDiscardStrategy } from '../../../src/game-logic/ai/tile-efficiency';
+import type { EfficiencyContext } from '../../../src/game-logic/ai/tile-efficiency';
 
 /** Build a tile with the current shared shape (id, suit, rank). */
 function tile(suit: Tile['suit'], rank: number, id?: string): Tile {
@@ -30,6 +32,8 @@ class FakeController implements TurnController {
     tile('dots', 1, 'drawn'),
     tile('bamboo', 2, 'b'),
   ]);
+  /** Optional context snapshot; undefined by default (hand-only path). */
+  aiContextSnapshot?: (playerId: number) => EfficiencyContext | null;
   private listeners: Array<(playerId: number) => void> = [];
 
   onTurnStart(listener: (playerId: number) => void): () => void {
@@ -181,5 +185,39 @@ describe('AIPlayer', () => {
     await Promise.resolve();
 
     expect(controller.draw).not.toHaveBeenCalled();
+  });
+
+  it('uses the efficiency strategy context when the controller provides it', async () => {
+    const controller = new FakeController();
+    // Provide a context snapshot so the AI takes the context-aware path.
+    controller.aiContextSnapshot = vi.fn(() => ({
+      seenTiles: [],
+      opponentRiichi: false,
+      tilesDrawn: 20,
+    }));
+    const ai = new AIPlayer(0, 0, new EfficiencyDiscardStrategy(), {
+      thinkTimeMs: () => 0,
+      sleep: async () => undefined,
+    });
+    ai.connect(controller);
+
+    await ai.playTurn(controller);
+
+    expect(controller.aiContextSnapshot).toHaveBeenCalledWith(0);
+    expect(controller.discard).toHaveBeenCalledTimes(1);
+  });
+
+  it('falls back to the hand-only path when the controller has no context', async () => {
+    const controller = new FakeController();
+    // No aiContextSnapshot defined → the AI must use chooseTile.
+    const ai = new AIPlayer(0, 0, new EfficiencyDiscardStrategy(), {
+      thinkTimeMs: () => 0,
+      sleep: async () => undefined,
+    });
+    ai.connect(controller);
+
+    await ai.playTurn(controller);
+
+    expect(controller.discard).toHaveBeenCalledTimes(1);
   });
 });
