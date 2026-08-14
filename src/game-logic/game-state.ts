@@ -19,6 +19,15 @@ export enum GameState {
   DISCARD = 'DISCARD',
   /** A player may declare win, meld, or pass. */
   DECLARE = 'DECLARE',
+  /**
+   * A player may declare a meld (chow/pung/kong) on an opponent's discard.
+   *
+   * This is the phase reached when a player has a claimable meld and the UI
+   * must prompt them. It is a *named alias* of {@link GameState.DECLARE} (same
+   * transition edges, same semantics) so callers can read intent from the
+   * phase value while the underlying machine stays unchanged.
+   */
+  MELD_DECLARATION = 'MELD_DECLARATION',
   /** A player exposes a pung/kong/chow and draws a replacement if applicable. */
   MELD = 'MELD',
   /** A player has a winning hand; scoring resolves. */
