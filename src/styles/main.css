@@ -20,3 +20,183 @@ body {
   height: 100vh;
   height: 100dvh;
 }
+
+/* ==========================================================================
+   Score table modal
+   ========================================================================== */
+
+.score-table-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(10, 20, 15, 0.55);
+  backdrop-filter: blur(2px);
+}
+
+.score-table-modal {
+  width: min(420px, 90vw);
+  max-height: 86vh;
+  overflow-y: auto;
+  background: #1c2b22;
+  border: 1px solid #3d6b4f;
+  border-radius: 12px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+  color: #e8e8d8;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  padding: 20px 22px;
+}
+
+.score-table-modal h2 {
+  margin: 0 0 4px;
+  font-size: 20px;
+  color: #f5d98b;
+}
+
+.score-table-winner {
+  margin: 0 0 14px;
+  font-size: 14px;
+  color: #cfe8d6;
+}
+
+.score-table-yaku,
+.score-table-transfers {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.score-table-yaku th,
+.score-table-transfers th {
+  text-align: left;
+  font-weight: 600;
+  color: #a9c8b4;
+  border-bottom: 1px solid #3d5a48;
+  padding: 4px 8px;
+}
+
+.score-table-yaku td,
+.score-table-transfers td {
+  padding: 5px 8px;
+  border-bottom: 1px solid #2c4236;
+}
+
+.score-table-yaku .num,
+.score-table-transfers .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.score-table-total td {
+  font-weight: 700;
+  border-bottom: none;
+  border-top: 1px solid #3d5a48;
+}
+
+.score-table-transfers .num.pos {
+  color: #7ce08f;
+}
+
+.score-table-transfers .num.neg {
+  color: #f09a9a;
+}
+
+.score-table-points {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 14px 0 10px;
+  padding: 10px 12px;
+  background: rgba(61, 90, 72, 0.4);
+  border-radius: 8px;
+}
+
+.score-table-points-label {
+  font-size: 13px;
+  color: #cfe8d6;
+}
+
+.score-table-points-value {
+  font-size: 18px;
+  font-weight: 700;
+  color: #f5d98b;
+}
+
+.score-table-close {
+  margin-top: 16px;
+  width: 100%;
+  padding: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #0f2016;
+  background: #cfe8d6;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.score-table-close:hover {
+  background: #a9c8b4;
+}
+
+/* ==========================================================================
+   Meld declaration prompt
+   ========================================================================== */
+
+.meld-declare-prompt {
+  position: fixed;
+  left: 50%;
+  bottom: 140px;
+  transform: translateX(-50%);
+  z-index: 90;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  background: rgba(20, 40, 30, 0.92);
+  border: 1px solid #3d6b4f;
+  border-radius: 12px;
+  padding: 10px 14px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
+}
+
+.meld-declare-btn {
+  min-width: 84px;
+  padding: 10px 14px;
+  font-size: 15px;
+  font-weight: 700;
+  color: #0f2016;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: transform 0.06s ease;
+}
+
+.meld-declare-btn:active {
+  transform: translateY(1px);
+}
+
+.meld-declare-chow {
+  background: #cfe8d6;
+}
+
+.meld-declare-pung {
+  background: #f5d98b;
+}
+
+.meld-declare-kong {
+  background: #f0b08b;
+}
+
+.meld-declare-win {
+  background: #f5f5f5;
+}
+
+.meld-declare-pass {
+  background: #9aa8a0;
+}
+
+.meld-declare-btn:hover {
+  filter: brightness(1.06);
+}
