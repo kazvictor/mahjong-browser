@@ -28,7 +28,10 @@ import { EfficiencyDiscardStrategy } from '../game-logic/ai/tile-efficiency';
 import type { EfficiencyContext } from '../game-logic/ai/tile-efficiency';
 import { MahjongGame, PLAYER_COUNT } from '../game-logic/mahjong-game';
 import { GameState } from '../game-logic/game-state';
-import type { Tile } from '../game-logic/types';
+import type { MeldType, Tile } from '../game-logic/types';
+import { MeldDisplay } from '../ui/components/meld-display';
+import { MeldDeclarationPrompt } from '../ui/components/meld-declaration';
+import type { MeldDeclareOption } from '../ui/components/meld-declaration';
 
 /** Options accepted by the {@link GameScene} constructor. */
 export interface GameSceneOptions {
@@ -143,6 +146,8 @@ export class GameScene {
   private readonly ais: AIPlayer[] = [];
   private readonly seed: number;
   private readonly enableAI: boolean;
+  private readonly meldDisplay: MeldDisplay;
+  private readonly meldPrompt: MeldDeclarationPrompt;
 
   /** The most recently computed layout (for hit-test rects + draw). */
   private frame: LayoutFrame | null = null;
@@ -161,6 +166,8 @@ export class GameScene {
     this.tileRenderer = new TileRenderer(this.loader);
     this.layout = new TableLayout();
     this.controller = new GameTurnController(this.game);
+    this.meldDisplay = new MeldDisplay();
+    this.meldPrompt = new MeldDeclarationPrompt();
 
     this.input = new InputHandler(
       canvas,
@@ -210,9 +217,11 @@ export class GameScene {
       }),
     );
 
-    // After any discard, advance to the next player's turn. (MVP: no claims.)
+    // After any discard, offer meld claims (chow/pung/kong) to other players
+    // before advancing the turn. The human gets a prompt; AI opponents claim
+    // automatically. If nobody claims, the turn advances normally.
     this.disposers.push(
-      this.game.on('TILE_DISCARDED', () => this.advanceTurn()),
+      this.game.on('TILE_DISCARDED', () => this.onDiscardForClaims()),
     );
 
     window.addEventListener('resize', this.onResize);
@@ -227,6 +236,7 @@ export class GameScene {
     this.running = false;
     cancelAnimationFrame(this.rafId);
     this.input.dispose();
+    this.meldPrompt.dispose();
     for (const d of this.disposers) d();
     this.disposers = [];
   }
@@ -256,6 +266,15 @@ export class GameScene {
         selected: tile.selected,
         hovered: tile.hovered,
         valid: tile.valid,
+      });
+    }
+
+    // Paint exposed melds face-up on top of the concealed-hand/wall layer.
+    const state = this.game.getState();
+    const meldFrame = this.meldDisplay.compute(w, h, state.players);
+    for (const tile of meldFrame.tiles) {
+      this.tileRenderer.draw(ctx, tile.suit, tile.rank, tile.x, tile.y, {
+        faceDown: false,
       });
     }
   }
@@ -350,6 +369,68 @@ export class GameScene {
         // Ignore: e.g. a claim path we don't model at MVP.
       }
     }
+  }
+
+  /**
+   * After a discard, offer meld claims to the other players before advancing
+   * the turn. The human (seat 0) gets a prompt when they can claim; AI
+   * opponents claim automatically. If nobody claims, the turn advances.
+   */
+  private onDiscardForClaims(): void {
+    const state = this.game.getState();
+    if (state.phase !== GameState.DISCARD) return;
+
+    // AI opponents claim first (they act instantly). The human is prompted.
+    for (let id = 1; id < PLAYER_COUNT; id++) {
+      const opps = this.game.getMeldOpportunities(id);
+      if (opps.length > 0) {
+        // Prefer the strongest claim (kong > pung > chow).
+        const best = opps.find((o) => o.type === 'kong')
+          ?? opps.find((o) => o.type === 'pung')
+          ?? opps[0]!;
+        try {
+          this.game.acceptMeldOpportunity(id, best.type);
+        } catch {
+          // Claim rejected (e.g. state changed); fall through to next player.
+        }
+        return; // a claim transferred the turn; stop offering
+      }
+    }
+
+    // No AI claimed; prompt the human if they can claim.
+    if (this.game.hasMeldOpportunity(0)) {
+      this.showMeldPrompt();
+    } else {
+      this.advanceTurn();
+    }
+  }
+
+  /** Show the meld-declaration prompt for the human player. */
+  private showMeldPrompt(): void {
+    const opps = this.game.getMeldOpportunities(0);
+    if (opps.length === 0) return;
+
+    const options: MeldDeclareOption[] = opps.map((o) => ({
+      kind: o.type as 'chow' | 'pung' | 'kong',
+      label: o.type.charAt(0).toUpperCase() + o.type.slice(1),
+      detail: o.tiles[0] ? `${o.tiles[0].suit} ${o.tiles[0].rank}` : undefined,
+    }));
+    options.push({ kind: 'pass', label: 'Pass' });
+
+    this.meldPrompt.onChoose = (kind) => {
+      if (kind === 'pass') {
+        this.advanceTurn();
+        return;
+      }
+      try {
+        this.game.acceptMeldOpportunity(0, kind as MeldType);
+      } catch {
+        // Claim rejected; advance the turn.
+        this.advanceTurn();
+      }
+    };
+    this.meldPrompt.onTimeout = () => this.advanceTurn();
+    this.meldPrompt.show(options);
   }
 
   // ---- AI wiring -----------------------------------------------------------
