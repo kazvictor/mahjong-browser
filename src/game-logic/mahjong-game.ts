@@ -9,6 +9,7 @@
  */
 import { EventBus, type GameEvent } from './game-events';
 import { GameState, transition } from './game-state';
+import { detectMeldOpportunities, type MeldOpportunity } from './meld-system';
 import { detectWin, type WinResult } from './win-detection';
 import { scoreWin, type ScoreResult } from './scoring';
 import type { Hand, Meld, MeldType, Player, Suit, Tile } from './types';
@@ -96,6 +97,12 @@ interface RoundState {
   /** Resolved when a win is declared; cleared on the next round. */
   winResult?: WinResult | null;
   scoreResult?: ScoreResult | null;
+  /**
+   * The most recent discard, held until the turn resolves (next draw, a
+   * claim, or a pass). Other players may claim this tile as a chow/pung/kong.
+   * Cleared once the discard is either claimed or the turn advances.
+   */
+  pendingDiscard?: Tile | null;
 }
 
 /** A read-only snapshot of the game, handed to the renderer each frame. */
@@ -114,6 +121,8 @@ export interface GameSnapshot {
   readonly winResult?: WinResult | null;
   /** The resolved score for the winning hand, set once a win is declared. */
   readonly scoreResult?: ScoreResult | null;
+  /** The tile most recently discarded and currently claimable, if any. */
+  readonly pendingDiscard?: Tile | null;
 }
 
 /** The public command surface for the game. */
@@ -157,6 +166,7 @@ export class MahjongGame {
         lastEvent: this.bus.getLastEvent(),
         winResult: null,
         scoreResult: null,
+        pendingDiscard: null,
       };
     }
     return {
@@ -178,6 +188,7 @@ export class MahjongGame {
       lastEvent: this.bus.getLastEvent(),
       winResult: round.winResult,
       scoreResult: round.scoreResult,
+      pendingDiscard: round.pendingDiscard ?? null,
     };
   }
 
@@ -259,6 +270,7 @@ export class MahjongGame {
     }
     const [tile] = player.tiles.splice(index, 1);
     round.discardPile.push(tile!);
+    round.pendingDiscard = tile!;
 
     this.phase = transition(this.phase, 'OPENING_DISCARD');
     this.bus.emit({ type: 'TILE_DISCARDED', playerId: player.id, tile: tile! });
@@ -297,6 +309,7 @@ export class MahjongGame {
     }
     const [tile] = player.tiles.splice(index, 1);
     round.discardPile.push(tile!);
+    round.pendingDiscard = tile!;
 
     this.bus.emit({ type: 'TILE_DISCARDED', playerId: player.id, tile: tile! });
     this.bus.emit({ type: 'TURN_ENDED', playerId: player.id });
@@ -310,6 +323,8 @@ export class MahjongGame {
     this.assertPhase(GameState.DISCARD, 'nextTurn');
     const round = this.requireRound();
     round.currentPlayer = (round.currentPlayer + 1) % PLAYER_COUNT;
+    // The discard window closes; no further claims are allowed this turn.
+    round.pendingDiscard = null;
     this.phase = transition(this.phase, 'DISCARD_TILE');
     this.bus.emit({ type: 'TURN_STARTED', playerId: round.currentPlayer });
   }
@@ -348,6 +363,8 @@ export class MahjongGame {
       const i = claimant.tiles.findIndex((x) => x.id === t.id);
       if (i !== -1) claimant.tiles.splice(i, 1);
     }
+    // The claimed tile is consumed; no further claims on it.
+    round.pendingDiscard = null;
 
     this.phase = transition(this.phase, 'CLAIM_DISCARD');
     this.bus.emit({ type: 'TILE_CLAIMED', playerId, tile: tile!, fromPlayer: round.currentPlayer });
@@ -398,13 +415,20 @@ export class MahjongGame {
    * Emits MELD_CALLED.
    */
   declareMeld(playerId: number, meld: Meld): void {
-    this.assertPhase(GameState.DECLARE, 'declareMeld');
+    if (this.phase !== GameState.DECLARE && this.phase !== GameState.MELD_DECLARATION) {
+      throw new Error(`declareMeld is not legal in phase ${this.phase}.`);
+    }
     const round = this.requireRound();
     const player = round.players[playerId];
     if (!player) throw new Error(`Unknown player ${playerId}.`);
 
     player.melds.push(meld);
-    this.phase = transition(this.phase, 'DECLARE_MELD');
+    // MELD_DECLARATION is a named alias of DECLARE; the transition table keys
+    // on DECLARE, so normalize before looking up the edge.
+    this.phase = transition(
+      this.phase === GameState.MELD_DECLARATION ? GameState.DECLARE : this.phase,
+      'DECLARE_MELD',
+    );
     this.bus.emit({ type: 'MELD_CALLED', playerId, meld });
   }
 
@@ -412,8 +436,111 @@ export class MahjongGame {
    * A player passes all declarations: DECLARE -> DISCARD.
    */
   pass(): void {
-    this.assertPhase(GameState.DECLARE, 'pass');
-    this.phase = transition(this.phase, 'PASS');
+    if (this.phase !== GameState.DECLARE && this.phase !== GameState.MELD_DECLARATION) {
+      throw new Error(`pass is not legal in phase ${this.phase}.`);
+    }
+    this.phase = transition(
+      this.phase === GameState.MELD_DECLARATION ? GameState.DECLARE : this.phase,
+      'PASS',
+    );
+  }
+
+  // ---- Meld opportunities (chow / pung / kong on an opponent's discard) ----
+
+  /** The tile most recently discarded and still claimable, if any. */
+  getPendingDiscard(): Tile | null {
+    return this.round?.pendingDiscard ?? null;
+  }
+
+  /**
+   * The meld opportunities (chow/pung/kong) available to `playerId` on the
+   * currently pending discard. Returns an empty array when there is no
+   * pending discard or the player cannot claim anything.
+   */
+  getMeldOpportunities(playerId: number): MeldOpportunity[] {
+    const round = this.requireRound();
+    const discard = round.pendingDiscard;
+    if (!discard) return [];
+    const player = round.players[playerId];
+    if (!player) return [];
+    return detectMeldOpportunities(player.tiles, discard);
+  }
+
+  /**
+   * True when `playerId` currently has at least one claimable meld on the
+   * pending discard. This is the trigger for the UI meld prompt and for the
+   * AI's automatic claims.
+   */
+  hasMeldOpportunity(playerId: number): boolean {
+    return this.getMeldOpportunities(playerId).length > 0;
+  }
+
+  /**
+   * Accept a meld opportunity on the currently pending discard in one call:
+   * removes the player's matching hand tiles + the discarded tile, exposes
+   * the meld, draws a kong replacement when applicable, and transfers the
+   * turn to the claimant.
+   *
+   * This is the authoritative high-level command the UI prompt and AI use to
+   * complete a claim. It is legal from the DISCARD phase (the discard window)
+   * or the MELD_DECLARATION phase (the prompt is showing).
+   *
+   * @returns the exposed meld.
+   */
+  acceptMeldOpportunity(playerId: number, type: MeldType): Meld {
+    if (this.phase !== GameState.DISCARD && this.phase !== GameState.MELD_DECLARATION) {
+      throw new Error(`acceptMeldOpportunity is not legal in phase ${this.phase}.`);
+    }
+    const round = this.requireRound();
+    const player = round.players[playerId];
+    if (!player) throw new Error(`Unknown player ${playerId}.`);
+    const discard = round.pendingDiscard;
+    if (!discard) throw new Error('No pending discard to claim.');
+
+    // Find the matching opportunity and validate it is genuinely available.
+    const opp = detectMeldOpportunities(player.tiles, discard).find((o) => o.type === type);
+    if (!opp) {
+      throw new Error(`Player ${playerId} cannot form a ${type} with the pending discard.`);
+    }
+
+    // Remove the claimed tile from the discard pile (it moves into the meld).
+    const discardIndex = round.discardPile.findIndex((t) => t.id === discard.id);
+    if (discardIndex !== -1) round.discardPile.splice(discardIndex, 1);
+    // Remove the claimant's matching hand tiles.
+    for (const id of opp.handTileIds) {
+      const i = player.tiles.findIndex((t) => t.id === id);
+      if (i !== -1) player.tiles.splice(i, 1);
+    }
+
+    const meld: Meld = {
+      type,
+      tiles: opp.tiles,
+      isConcealed: false,
+      sourcePlayer: round.currentPlayer,
+    };
+    player.melds.push(meld);
+    round.pendingDiscard = null;
+
+    // Complete the declaration: DECLARE/MELD_DECLARATION -> MELD, then MELD -> DRAW.
+    if (this.phase === GameState.DISCARD) {
+      this.phase = transition(GameState.DISCARD, 'CLAIM_DISCARD');
+    }
+    this.phase = transition(GameState.DECLARE, 'DECLARE_MELD');
+    this.bus.emit({ type: 'MELD_CALLED', playerId, meld });
+
+    // Kong claims draw a replacement tile.
+    if (type === 'kong') {
+      const replacement = round.wall.pop();
+      if (replacement) {
+        player.tiles.push(replacement);
+        this.bus.emit({ type: 'TILE_DRAWN', playerId, tile: replacement, from: 'KONG_REPLACEMENT' });
+      }
+    }
+
+    round.currentPlayer = playerId;
+    this.phase = transition(GameState.MELD, 'MELD_COMPLETE');
+    this.bus.emit({ type: 'TURN_STARTED', playerId });
+    return meld;
   }
 
   /**
