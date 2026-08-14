@@ -9,6 +9,15 @@
 export { TableRenderer } from './table-renderer';
 export { DealingAnimation, TILE_W, TILE_H } from './dealing-animation';
 export {
+  WinRevealAnimation,
+  computeReveal,
+  easeOutCubic,
+  isRevealComplete,
+  type TileRevealState,
+  type RevealTile,
+  type WinRevealOptions,
+} from './animations';
+export {
   AssetLoader,
   TILE_WIDTH,
   TILE_HEIGHT,
