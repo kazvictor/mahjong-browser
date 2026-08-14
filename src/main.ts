@@ -19,6 +19,10 @@ async function start(): Promise<void> {
   const canvas = getGameCanvas();
   const scene = new GameScene(canvas);
 
+  // Expose the scene for automated visual QA (Playwright). The test harness
+  // drives the game into a meld state and asserts on the rendered table.
+  (window as unknown as { __mahjongScene?: GameScene }).__mahjongScene = scene;
+
   // Keep the scene alive for the lifetime of the page; the frame loop is owned
   // by the scene. A failed asset load must not silently render a blank screen,
   // so surface it loudly in the console.
