@@ -23,6 +23,12 @@ export type {
 export { EventBus } from './game-events';
 export { MahjongGame, PLAYER_COUNT, HAND_SIZE } from './mahjong-game';
 export type { GameSnapshot } from './mahjong-game';
+export {
+  detectMeldOpportunities,
+  hasMeldOpportunity,
+  meldHandCount,
+  type MeldOpportunity,
+} from './meld-system';
 export { HongKongRules, isWinningHand, calculateFaan } from './rules/hong-kong-rules';
 export type { FaanPattern } from './rules/hong-kong-rules';
 export {
