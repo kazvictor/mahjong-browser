@@ -1,4 +1,6 @@
 import { defineConfig, devices } from '@playwright/test';
+import { fileURLToPath } from 'node:url';
+import { dirname, resolve } from 'node:path';
 
 /**
  * Playwright configuration for Mahjong browser game visual QA
@@ -7,6 +9,8 @@ import { defineConfig, devices } from '@playwright/test';
  * Run headed: npm run test:visual:headed
  * Show report: npm run test:visual:report
  */
+const __dirname = dirname(fileURLToPath(import.meta.url));
+
 export default defineConfig({
   testDir: '.',
   testMatch: '**/*.spec.ts',
@@ -15,11 +19,11 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   workers: 1, // Single worker for visual consistency
   reporter: [
-    ['html', { outputFolder: 'tests/visual/playwright-report' }],
+    ['html', { outputFolder: resolve(__dirname, 'playwright-report') }],
     ['list'],
   ],
   use: {
-    baseURL: 'http://localhost:5173',
+    baseURL: process.env.BASE_URL || 'http://localhost:5173',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
@@ -30,5 +34,5 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'] },
     },
   ],
-  outputDir: 'tests/visual/test-results',
+  outputDir: resolve(__dirname, 'test-results'),
 });
