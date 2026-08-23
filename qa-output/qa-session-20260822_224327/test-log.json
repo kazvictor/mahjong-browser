@@ -1,0 +1,17 @@
+{
+  "session_id": "20260822_224327",
+  "project": "mahjong-browser",
+  "url": "http://localhost:5173",
+  "start_time": "2026-08-22T22:43:27.886713",
+  "phases": [
+    "00-main-menu",
+    "01-quick-play",
+    "02-full-game",
+    "03-practice-mode",
+    "04-modals-and-ui",
+    "05-gameplay-actions",
+    "06-end-game-states"
+  ],
+  "screenshots": [],
+  "issues": []
+}
