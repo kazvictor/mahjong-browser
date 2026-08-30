@@ -14,7 +14,7 @@ import { test, expect } from '@playwright/test';
 
 /** Wait for the scene to be exposed and the game to be running. */
 async function waitForScene(page: import('@playwright/test').Page) {
-  await page.goto('/');
+  await page.goto(process.env.BASE_URL || 'http://localhost:5173');
   await page.waitForSelector('#game-canvas', { state: 'visible' });
   await page.waitForFunction(() => {
     const s = (window as unknown as { __mahjongScene?: { getGame?: () => unknown } }).__mahjongScene;

@@ -33,7 +33,7 @@ test.beforeEach(async ({ page }) => {
     fs.mkdirSync(BASELINE_DIR, { recursive: true });
   }
   
-  await page.goto('/');
+  await page.goto(process.env.BASE_URL || 'http://localhost:5173');
   await page.waitForSelector('#game-canvas', { state: 'visible' });
   await page.waitForTimeout(2000); // Wait for game initialization
 });

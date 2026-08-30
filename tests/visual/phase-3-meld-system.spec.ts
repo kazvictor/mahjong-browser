@@ -14,7 +14,7 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Phase 3: Meld System', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/');
+    await page.goto(process.env.BASE_URL || 'http://localhost:5173');
     await page.waitForSelector('#game-canvas', { state: 'visible' });
   });
 
