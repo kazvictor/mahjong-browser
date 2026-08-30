@@ -42,8 +42,8 @@ test.beforeEach(async ({ page }) => {
     fs.mkdirSync(BASELINE_DIR, { recursive: true });
   }
   
-  // Navigate to game (uses baseURL from playwright.config.ts)
-  await page.goto('/');
+  // Navigate to game (use explicit URL to avoid navigation errors after stale state)
+  await page.goto(process.env.BASE_URL || 'http://localhost:5173');
   await page.waitForLoadState('networkidle');
   
   // Wait for canvas to be visible
