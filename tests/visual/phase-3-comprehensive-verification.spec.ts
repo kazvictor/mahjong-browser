@@ -24,7 +24,7 @@ test.beforeEach(async ({ page }) => {
     fs.mkdirSync(SCREENSHOT_DIR, { recursive: true });
   }
   
-  await page.goto('http://localhost:5173/');
+  await page.goto('/');
   await page.waitForSelector('#game-canvas', { state: 'visible' });
   await page.waitForTimeout(2000); // Wait for game initialization
 });
