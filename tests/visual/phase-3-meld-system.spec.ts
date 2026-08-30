@@ -60,7 +60,7 @@ test.describe('Phase 3: Meld System', () => {
 
 test.describe('Phase 3: Win Detection & Scoring', () => {
   test('TC4: Win button visible when hand is winning', async ({ page }) => {
-    await page.goto('/');
+    await page.goto(process.env.BASE_URL || 'http://localhost:5173');
     await page.waitForTimeout(3000);
 
     test.info().annotations.push({
@@ -70,7 +70,7 @@ test.describe('Phase 3: Win Detection & Scoring', () => {
   });
 
   test('TC5: Score table displays after round ends', async ({ page }) => {
-    await page.goto('/');
+    await page.goto(process.env.BASE_URL || 'http://localhost:5173');
     await page.waitForTimeout(3000);
 
     test.info().annotations.push({
@@ -82,7 +82,7 @@ test.describe('Phase 3: Win Detection & Scoring', () => {
 
 test.describe('Phase 3: UI Polish', () => {
   test('TC10: Meld display renders correctly', async ({ page }) => {
-    await page.goto('/');
+    await page.goto(process.env.BASE_URL || 'http://localhost:5173');
     await page.waitForTimeout(3000);
 
     test.info().annotations.push({
@@ -92,7 +92,7 @@ test.describe('Phase 3: UI Polish', () => {
   });
 
   test('TC12: Score panel visible and readable', async ({ page }) => {
-    await page.goto('/');
+    await page.goto(process.env.BASE_URL || 'http://localhost:5173');
     await page.waitForTimeout(3000);
 
     const screenshot = await page.screenshot();
