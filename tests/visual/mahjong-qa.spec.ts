@@ -224,6 +224,10 @@ test.describe('Mahjong QA Suite', () => {
     
     console.log('TC5: After - discards:', afterState.discards, 'phase:', afterState.phase);
     
+    // Ensure directory exists before writing
+    if (!fs.existsSync(SCREENSHOT_DIR)) {
+      fs.mkdirSync(SCREENSHOT_DIR, { recursive: true });
+    }
     const screenshot = await page.screenshot();
     fs.writeFileSync(path.join(SCREENSHOT_DIR, 'TC5-tile-discarded.png'), screenshot);
     
@@ -267,6 +271,10 @@ test.describe('Mahjong QA Suite', () => {
     
     console.log('TC6: After - current player:', afterPlayer);
     
+    // Ensure directory exists before writing
+    if (!fs.existsSync(SCREENSHOT_DIR)) {
+      fs.mkdirSync(SCREENSHOT_DIR, { recursive: true });
+    }
     const screenshot = await page.screenshot();
     fs.writeFileSync(path.join(SCREENSHOT_DIR, 'TC6-turn-passes.png'), screenshot);
     
@@ -285,6 +293,10 @@ test.describe('Mahjong QA Suite', () => {
     
     expect(hasMeldPrompt).toBe(true);
     
+    // Ensure directory exists before writing
+    if (!fs.existsSync(SCREENSHOT_DIR)) {
+      fs.mkdirSync(SCREENSHOT_DIR, { recursive: true });
+    }
     const screenshot = await page.screenshot();
     fs.writeFileSync(path.join(SCREENSHOT_DIR, 'TC7-meld-prompt.png'), screenshot);
     
@@ -308,6 +320,10 @@ test.describe('Mahjong QA Suite', () => {
     
     console.log('TC8: Meld info - hasMeldRenderer:', meldInfo.hasMeldRenderer, 'hasMeldSupport:', meldInfo.hasMeldSupport);
     
+    // Ensure directory exists before writing
+    if (!fs.existsSync(SCREENSHOT_DIR)) {
+      fs.mkdirSync(SCREENSHOT_DIR, { recursive: true });
+    }
     const screenshot = await page.screenshot();
     fs.writeFileSync(path.join(SCREENSHOT_DIR, 'TC8-meld-display.png'), screenshot);
     
@@ -327,6 +343,10 @@ test.describe('Mahjong QA Suite', () => {
     
     expect(hasWinDetection).toBe(true);
     
+    // Ensure directory exists before writing
+    if (!fs.existsSync(SCREENSHOT_DIR)) {
+      fs.mkdirSync(SCREENSHOT_DIR, { recursive: true });
+    }
     const screenshot = await page.screenshot();
     fs.writeFileSync(path.join(SCREENSHOT_DIR, 'TC9-win-detection.png'), screenshot);
     
@@ -348,6 +368,10 @@ test.describe('Mahjong QA Suite', () => {
     // Log result but don't fail - this is a Phase 3 feature
     console.log('TC10: Win mechanism present:', hasWinMechanism);
     
+    // Ensure directory exists before writing
+    if (!fs.existsSync(SCREENSHOT_DIR)) {
+      fs.mkdirSync(SCREENSHOT_DIR, { recursive: true });
+    }
     const screenshot = await page.screenshot();
     fs.writeFileSync(path.join(SCREENSHOT_DIR, 'TC10-win-declaration.png'), screenshot);
     
@@ -367,6 +391,10 @@ test.describe('Mahjong QA Suite', () => {
     
     console.log('TC11: Score mechanism present:', hasScoreMechanism);
     
+    // Ensure directory exists before writing
+    if (!fs.existsSync(SCREENSHOT_DIR)) {
+      fs.mkdirSync(SCREENSHOT_DIR, { recursive: true });
+    }
     const screenshot = await page.screenshot();
     fs.writeFileSync(path.join(SCREENSHOT_DIR, 'TC11-score-table.png'), screenshot);
     
@@ -386,6 +414,10 @@ test.describe('Mahjong QA Suite', () => {
     
     console.log('TC12: Riichi mechanism present:', hasRiichiMechanism);
     
+    // Ensure directory exists before writing
+    if (!fs.existsSync(SCREENSHOT_DIR)) {
+      fs.mkdirSync(SCREENSHOT_DIR, { recursive: true });
+    }
     const screenshot = await page.screenshot();
     fs.writeFileSync(path.join(SCREENSHOT_DIR, 'TC12-riichi-indicator.png'), screenshot);
     
@@ -406,6 +438,10 @@ test.describe('Mahjong QA Suite', () => {
     
     console.log('TC13: AI players present:', hasAI);
     
+    // Ensure directory exists before writing
+    if (!fs.existsSync(SCREENSHOT_DIR)) {
+      fs.mkdirSync(SCREENSHOT_DIR, { recursive: true });
+    }
     const screenshot = await page.screenshot();
     fs.writeFileSync(path.join(SCREENSHOT_DIR, 'TC13-ai-behavior.png'), screenshot);
     
@@ -442,6 +478,10 @@ test.describe('Mahjong QA Suite', () => {
     
     console.log('TC14: Save result:', saveResult);
     
+    // Ensure directory exists before writing
+    if (!fs.existsSync(SCREENSHOT_DIR)) {
+      fs.mkdirSync(SCREENSHOT_DIR, { recursive: true });
+    }
     const screenshot = await page.screenshot();
     fs.writeFileSync(path.join(SCREENSHOT_DIR, 'TC14-save-game.png'), screenshot);
     
@@ -465,6 +505,10 @@ test.describe('Mahjong QA Suite', () => {
     
     console.log('TC15: Initial state:', initialState);
     
+    // Ensure directory exists before writing
+    if (!fs.existsSync(SCREENSHOT_DIR)) {
+      fs.mkdirSync(SCREENSHOT_DIR, { recursive: true });
+    }
     const screenshot = await page.screenshot();
     fs.writeFileSync(path.join(SCREENSHOT_DIR, 'TC15-load-game.png'), screenshot);
     
