@@ -40,3 +40,4 @@ tests/visual/tests/
 
 # Test result artifacts
 test-results/
+cron-screenshot-latest.png
